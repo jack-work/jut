@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/tidwall/pretty"
 )
 
@@ -22,6 +23,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "jut - JWT decoder for your terminal\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
+		fmt.Fprintf(os.Stderr, "  jut                  decode JWT from clipboard\n")
 		fmt.Fprintf(os.Stderr, "  jut <token>          decode a JWT\n")
 		fmt.Fprintf(os.Stderr, "  echo <token> | jut   read from stdin\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
@@ -35,11 +37,6 @@ func main() {
 	}
 
 	token := getToken(flag.Args())
-	if token == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
 	parts := strings.Split(token, ".")
 	if len(parts) < 2 || len(parts) > 3 {
 		fatal("invalid JWT: expected 2 or 3 dot-separated segments, got %d", len(parts))
@@ -76,7 +73,16 @@ func getToken(args []string) string {
 		return strings.TrimSpace(string(b))
 	}
 
-	return ""
+	// No args, no pipe — try clipboard
+	text, err := clipboard.ReadAll()
+	if err != nil {
+		fatal("failed to read clipboard: %v", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		fatal("clipboard is empty")
+	}
+	return text
 }
 
 func decodeSegment(seg string) ([]byte, error) {
